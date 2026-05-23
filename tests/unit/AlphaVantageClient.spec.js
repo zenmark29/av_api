@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { AlphaVantageClient } from '../../src/av_api.js'
+import { AlphaVantageClient, OverviewResponse } from '../../src/av_api.js'
 
 const apiKey = 'demo-key'
 
@@ -160,5 +160,190 @@ describe('AlphaVantageClient', () => {
     assert.throws(() => new AlphaVantageClient(apiKey, { fetcher: undefined }), {
       message: 'A fetch implementation is required for AlphaVantageClient',
     })
+  })
+
+  it('supports overview helper and returns OverviewResponse', async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        Symbol: 'IBM',
+        Name: 'International Business Machines Corporation',
+        Exchange: 'NYSE',
+        Currency: 'USD',
+        Sector: 'Technology',
+        'P/E Ratio': '23.5',
+        EPS: '9.33',
+        'Market Capitalization': '180000000000',
+      }),
+    })
+
+    const client = new AlphaVantageClient(apiKey)
+    const result = await client.overview('IBM')
+
+    assert.ok(result instanceof OverviewResponse)
+    assert.strictEqual(result.symbol, 'IBM')
+    assert.strictEqual(result.name, 'International Business Machines Corporation')
+    assert.strictEqual(result.exchange, 'NYSE')
+    assert.strictEqual(result.currency, 'USD')
+    assert.strictEqual(result.sector, 'Technology')
+    assert.strictEqual(result.peRatio, 23.5)
+    assert.strictEqual(result.eps, 9.33)
+    assert.strictEqual(result.marketCapitalization, 180000000000)
+  })
+
+  it('OverviewResponse hasUsefulInformation is true when data is present', () => {
+    const payload = {
+      Symbol: 'IBM',
+      Name: 'International Business Machines Corporation',
+      Exchange: 'NYSE',
+      Currency: 'USD',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.hasUsefulInformation, true)
+  })
+
+  it('OverviewResponse hasUsefulInformation is false when symbol is missing', () => {
+    const payload = {
+      Name: 'International Business Machines Corporation',
+      Exchange: 'NYSE',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.hasUsefulInformation, false)
+  })
+
+  it('OverviewResponse hasUsefulInformation is false when only symbol is present', () => {
+    const payload = {
+      Symbol: 'IBM',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.hasUsefulInformation, false)
+  })
+
+  it('OverviewResponse parses numeric fields correctly', () => {
+    const payload = {
+      Symbol: 'IBM',
+      Name: 'IBM',
+      'Market Capitalization': '180000000000',
+      'P/E Ratio': '23.5',
+      EPS: '9.33',
+      'Dividend Yield': '0.025',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(typeof overview.marketCapitalization, 'number')
+    assert.strictEqual(typeof overview.peRatio, 'number')
+    assert.strictEqual(typeof overview.eps, 'number')
+    assert.strictEqual(typeof overview.dividendYield, 'number')
+    assert.strictEqual(overview.marketCapitalization, 180000000000)
+    assert.strictEqual(overview.peRatio, 23.5)
+    assert.strictEqual(overview.eps, 9.33)
+    assert.strictEqual(overview.dividendYield, 0.025)
+  })
+
+  it('OverviewResponse sets null for missing numeric fields', () => {
+    const payload = {
+      Symbol: 'IBM',
+      Name: 'IBM',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.peRatio, null)
+    assert.strictEqual(overview.eps, null)
+    assert.strictEqual(overview.marketCapitalization, null)
+  })
+
+  it('OverviewResponse parses all optional string fields', () => {
+    const payload = {
+      Symbol: 'MSFT',
+      'Asset type': 'Common Stock',
+      Name: 'Microsoft Corporation',
+      Description: 'A technology company',
+      CIK: '0000000789',
+      Exchange: 'NASDAQ',
+      Currency: 'USD',
+      Country: 'United States',
+      Sector: 'Technology',
+      Industry: 'Software',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.assetType, 'Common Stock')
+    assert.strictEqual(overview.description, 'A technology company')
+    assert.strictEqual(overview.cik, '0000000789')
+    assert.strictEqual(overview.country, 'United States')
+    assert.strictEqual(overview.industry, 'Software')
+  })
+
+  it('OverviewResponse sets null for missing string fields', () => {
+    const payload = {
+      Symbol: 'IBM',
+      Name: 'IBM',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.assetType, null)
+    assert.strictEqual(overview.description, null)
+    assert.strictEqual(overview.cik, null)
+    assert.strictEqual(overview.country, null)
+    assert.strictEqual(overview.industry, null)
+  })
+
+  it('OverviewResponse parses all financial metrics', () => {
+    const payload = {
+      Symbol: 'AAPL',
+      Name: 'Apple Inc.',
+      EBITDA: '119000000000',
+      'PEG Ratio': '2.5',
+      'Book Value': '3.85',
+      'Dividend per Share': '0.24',
+      'Dividend Yield': '0.0045',
+      'Revenue per Share TTM': '28.50',
+      'Profit Margin': '0.25',
+      'Operating Margin TTM': '0.30',
+      'Return on Assets YTD': '0.15',
+      'Return on Equity TTM': '0.85',
+      'Revenue TTM': '394000000000',
+      'Gross Profit TTM': '170000000000',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.ebitda, 119000000000)
+    assert.strictEqual(overview.pegRatio, 2.5)
+    assert.strictEqual(overview.bookValue, 3.85)
+    assert.strictEqual(overview.dividendPerShare, 0.24)
+    assert.strictEqual(overview.dividendYield, 0.0045)
+    assert.strictEqual(overview.revenuePerShareTTM, 28.50)
+    assert.strictEqual(overview.profitMargin, 0.25)
+    assert.strictEqual(overview.operatingMarginTTM, 0.30)
+    assert.strictEqual(overview.returnOnAssetsYTD, 0.15)
+    assert.strictEqual(overview.returnOnEquityTTM, 0.85)
+    assert.strictEqual(overview.revenueTTM, 394000000000)
+    assert.strictEqual(overview.grossProfitTTM, 170000000000)
+  })
+
+  it('OverviewResponse sets null for missing financial metrics', () => {
+    const payload = {
+      Symbol: 'TEST',
+      Name: 'Test Company',
+    }
+
+    const overview = new OverviewResponse(payload)
+    assert.strictEqual(overview.ebitda, null)
+    assert.strictEqual(overview.pegRatio, null)
+    assert.strictEqual(overview.bookValue, null)
+    assert.strictEqual(overview.dividendPerShare, null)
+    assert.strictEqual(overview.dividendYield, null)
+    assert.strictEqual(overview.revenuePerShareTTM, null)
+    assert.strictEqual(overview.profitMargin, null)
+    assert.strictEqual(overview.operatingMarginTTM, null)
+    assert.strictEqual(overview.returnOnAssetsYTD, null)
+    assert.strictEqual(overview.returnOnEquityTTM, null)
+    assert.strictEqual(overview.revenueTTM, null)
+    assert.strictEqual(overview.grossProfitTTM, null)
   })
 })

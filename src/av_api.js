@@ -1,5 +1,40 @@
 const DEFAULT_BASE_URL = 'https://www.alphavantage.co/query'
 
+export class OverviewResponse {
+  constructor(payload) {
+    this.symbol = payload.Symbol || null
+    this.assetType = payload['Asset type'] || null
+    this.name = payload.Name || null
+    this.description = payload.Description || null
+    this.cik = payload.CIK || null
+    this.exchange = payload.Exchange || null
+    this.currency = payload.Currency || null
+    this.country = payload.Country || null
+    this.sector = payload.Sector || null
+    this.industry = payload.Industry || null
+    this.marketCapitalization = payload['Market Capitalization'] ? parseInt(payload['Market Capitalization']) : null
+    this.ebitda = payload.EBITDA ? parseInt(payload.EBITDA) : null
+    this.peRatio = payload['P/E Ratio'] ? parseFloat(payload['P/E Ratio']) : null
+    this.pegRatio = payload['PEG Ratio'] ? parseFloat(payload['PEG Ratio']) : null
+    this.bookValue = payload['Book Value'] ? parseFloat(payload['Book Value']) : null
+    this.dividendPerShare = payload['Dividend per Share'] ? parseFloat(payload['Dividend per Share']) : null
+    this.dividendYield = payload['Dividend Yield'] ? parseFloat(payload['Dividend Yield']) : null
+    this.eps = payload.EPS ? parseFloat(payload.EPS) : null
+    this.revenuePerShareTTM = payload['Revenue per Share TTM'] ? parseFloat(payload['Revenue per Share TTM']) : null
+    this.profitMargin = payload['Profit Margin'] ? parseFloat(payload['Profit Margin']) : null
+    this.operatingMarginTTM = payload['Operating Margin TTM'] ? parseFloat(payload['Operating Margin TTM']) : null
+    this.returnOnAssetsYTD = payload['Return on Assets YTD'] ? parseFloat(payload['Return on Assets YTD']) : null
+    this.returnOnEquityTTM = payload['Return on Equity TTM'] ? parseFloat(payload['Return on Equity TTM']) : null
+    this.revenueTTM = payload['Revenue TTM'] ? parseInt(payload['Revenue TTM']) : null
+    this.grossProfitTTM = payload['Gross Profit TTM'] ? parseInt(payload['Gross Profit TTM']) : null
+  }
+
+  get hasUsefulInformation() {
+    // Consider the response useful if it has a symbol and at least one other key field
+    return !!(this.symbol && (this.name || this.exchange || this.currency || this.sector))
+  }
+}
+
 export class AlphaVantageClient {
   constructor(apiKey = process.env.AV_KEY, { baseUrl = DEFAULT_BASE_URL, fetcher } = {}) {
     if (!apiKey || typeof apiKey !== 'string') {
@@ -61,5 +96,10 @@ export class AlphaVantageClient {
 
   async searchKeywords(keywords) {
     return this.request('SYMBOL_SEARCH', { keywords, datatype: 'json' })
+  }
+
+  async overview(symbol) {
+    const payload = await this.request('OVERVIEW', { symbol, datatype: 'json' })
+    return new OverviewResponse(payload)
   }
 }
