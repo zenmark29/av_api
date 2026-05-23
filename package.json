@@ -1,0 +1,32 @@
+{
+  "name": "av_api",
+  "version": "1.0.0",
+  "description": "personal package to call alpha vantage",
+  "homepage": "https://github.com/zenmark29/av_api#readme",
+  "bugs": {
+    "url": "https://github.com/zenmark29/av_api/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zenmark29/av_api.git"
+  },
+  "license": "MIT",
+  "author": "Robert Mark Mills",
+  "type": "module",
+  "main": "av_api.js",
+  "exports": {
+    ".": "./av_api.js"
+  },
+  "files": [
+    "av_api.js",
+    "src/"
+  ],
+  "scripts": {
+    "test": "node --test tests/unit/AlphaVantageClient.spec.js",
+    "test:integration": "node --test tests/integration/AlphaVantageClient.integration.spec.js",
+    "coverage": "c8 npm test"
+  },
+  "devDependencies": {
+    "c8": "^8.0.0"
+  }
+}
