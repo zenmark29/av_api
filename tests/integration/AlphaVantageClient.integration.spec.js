@@ -12,10 +12,10 @@ describe('AlphaVantageClient integration', () => {
   })
   testFn('fetches a global quote for IBM', async () => {
     const client = new AlphaVantageClient(apiKey)
-    const payload = await client.quote('IBM')
+    const quote = await client.quote('IBM')
 
-    assert.ok(payload['Global Quote'])
-    assert.strictEqual(payload['Global Quote']['01. symbol'], 'IBM')
+    assert.strictEqual(quote.symbol, 'IBM')
+    assert.ok(quote.hasUsefulInformation)
   })
 
   testFn('fetches daily time series data for IBM', async () => {
@@ -36,5 +36,12 @@ describe('AlphaVantageClient integration', () => {
     assert.ok(overview.name)
     assert.ok(overview.exchange)
     assert.ok(overview.currency)
+  })
+   testFn('fetches a global quote for VTI', async () => {
+    const client = new AlphaVantageClient(apiKey)
+    const quote = await client.quote('VTI')
+
+    assert.strictEqual(quote.symbol, 'VTI')
+    assert.ok(quote.hasUsefulInformation)
   })
 })

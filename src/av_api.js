@@ -35,8 +35,29 @@ export class OverviewResponse {
   }
 }
 
+export class GlobalQuoteResponse {
+  constructor(payload) {
+    this.symbol = payload['01. symbol'] || null
+    this.open = payload['02. open'] ? parseFloat(payload['02. open']) : null
+    this.high = payload['03. high'] ? parseFloat(payload['03. high']) : null
+    this.low = payload['04. low'] ? parseFloat(payload['04. low']) : null
+    this.price = payload['05. price'] ? parseFloat(payload['05. price']) : null
+    this.volume = payload['06. volume'] ? parseInt(payload['06. volume'], 10) : null
+    this.latestTradingDay = payload['07. latest trading day'] || null
+    this.previousClose = payload['08. previous close'] ? parseFloat(payload['08. previous close']) : null
+    this.change = payload['09. change'] ? parseFloat(payload['09. change']) : null
+    this.changePercent = payload['10. change percent']
+      ? parseFloat(payload['10. change percent'].replace('%', '').trim())
+      : null
+  }
+
+  get hasUsefulInformation() {
+    return !!(this.symbol && (this.price !== null || this.volume !== null))
+  }
+}
+
 export class AlphaVantageClient {
-  constructor(apiKey = process.env.AV_KEY, { baseUrl = DEFAULT_BASE_URL, fetcher } = {}) {
+  constructor(apiKey = process.env.AV_KEY, { fetcher } = {}) {
     if (!apiKey || typeof apiKey !== 'string') {
       throw new TypeError('AlphaVantageClient requires a valid apiKey string')
     }
@@ -47,7 +68,7 @@ export class AlphaVantageClient {
     }
 
     this.apiKey = apiKey
-    this.baseUrl = baseUrl
+    this.baseUrl = DEFAULT_BASE_URL
     this.fetcher = effectiveFetch
   }
 
@@ -91,7 +112,8 @@ export class AlphaVantageClient {
   }
 
   async quote(symbol) {
-    return this.request('GLOBAL_QUOTE', { symbol, datatype: 'json' })
+    const payload = await this.request('GLOBAL_QUOTE', { symbol, datatype: 'json' })
+    return new GlobalQuoteResponse(payload['Global Quote'] || {})
   }
 
   async searchKeywords(keywords) {

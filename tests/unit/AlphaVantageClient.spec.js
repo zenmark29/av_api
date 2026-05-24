@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { AlphaVantageClient, OverviewResponse } from '../../src/av_api.js'
+import { AlphaVantageClient, OverviewResponse, GlobalQuoteResponse } from '../../src/av_api.js'
 
 const apiKey = 'demo-key'
 
@@ -39,12 +39,108 @@ describe('AlphaVantageClient', () => {
     assert.throws(() => new AlphaVantageClient(), TypeError)
   })
 
-  it('builds a request and returns parsed JSON', async () => {
+  it('builds a request and returns a GlobalQuoteResponse', async () => {
     const client = new AlphaVantageClient(apiKey)
     const result = await client.quote('IBM')
 
     assert.strictEqual(fetchMock.calls, 1)
-    assert.strictEqual(result['Global Quote']['01. symbol'], 'IBM')
+    assert.ok(result instanceof GlobalQuoteResponse)
+    assert.strictEqual(result.symbol, 'IBM')
+  })
+
+  it('ignores a custom baseUrl and uses the fixed Alpha Vantage endpoint', async () => {
+    const client = new AlphaVantageClient(apiKey, { baseUrl: 'https://example.com', fetcher: globalThis.fetch })
+    const result = await client.quote('IBM')
+
+    assert.strictEqual(fetchMock.calls, 1)
+    assert.ok(result instanceof GlobalQuoteResponse)
+    assert.strictEqual(result.symbol, 'IBM')
+  })
+
+  it('GlobalQuoteResponse parses numeric fields correctly', () => {
+    const payload = {
+      '01. symbol': 'IBM',
+      '02. open': '130.24',
+      '03. high': '132.50',
+      '04. low': '129.50',
+      '05. price': '130.60',
+      '06. volume': '3041581',
+      '07. latest trading day': '2024-05-23',
+      '08. previous close': '130.86',
+      '09. change': '-0.26',
+      '10. change percent': '-0.1989%',
+    }
+
+    const quote = new GlobalQuoteResponse(payload)
+    assert.strictEqual(quote.symbol, 'IBM')
+    assert.strictEqual(quote.open, 130.24)
+    assert.strictEqual(quote.high, 132.5)
+    assert.strictEqual(quote.low, 129.5)
+    assert.strictEqual(quote.price, 130.6)
+    assert.strictEqual(quote.volume, 3041581)
+    assert.strictEqual(quote.latestTradingDay, '2024-05-23')
+    assert.strictEqual(quote.previousClose, 130.86)
+    assert.strictEqual(quote.change, -0.26)
+    assert.strictEqual(quote.changePercent, -0.1989)
+  })
+
+  it('GlobalQuoteResponse sets null for missing change percent', () => {
+    const payload = {
+      '01. symbol': 'IBM',
+      '02. open': '130.24',
+      '03. high': '132.50',
+      '04. low': '129.50',
+      '05. price': '130.60',
+      '06. volume': '3041581',
+      '07. latest trading day': '2024-05-23',
+      '08. previous close': '130.86',
+      '09. change': '-0.26',
+    }
+
+    const quote = new GlobalQuoteResponse(payload)
+    assert.strictEqual(quote.changePercent, null)
+  })
+
+  it('GlobalQuoteResponse hasUsefulInformation is false when price and volume are missing', () => {
+    const payload = {
+      '01. symbol': 'IBM',
+      '07. latest trading day': '2024-05-23',
+    }
+
+    const quote = new GlobalQuoteResponse(payload)
+    assert.strictEqual(quote.symbol, 'IBM')
+    assert.strictEqual(quote.price, null)
+    assert.strictEqual(quote.volume, null)
+    assert.strictEqual(quote.hasUsefulInformation, false)
+  })
+
+  it('GlobalQuoteResponse sets null when symbol is missing', () => {
+    const payload = {
+      '05. price': '130.60',
+      '06. volume': '3041581',
+    }
+
+    const quote = new GlobalQuoteResponse(payload)
+    assert.strictEqual(quote.symbol, null)
+    assert.strictEqual(quote.hasUsefulInformation, false)
+  })
+
+  it('quote returns an empty GlobalQuoteResponse when Global Quote is missing', async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({}),
+    })
+
+    const client = new AlphaVantageClient(apiKey)
+    const quote = await client.quote('IBM')
+
+    assert.ok(quote instanceof GlobalQuoteResponse)
+    assert.strictEqual(quote.symbol, null)
+    assert.strictEqual(quote.price, null)
+    assert.strictEqual(quote.volume, null)
+    assert.strictEqual(quote.hasUsefulInformation, false)
   })
 
   it('throws on a non-OK response', async () => {
