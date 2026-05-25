@@ -111,6 +111,24 @@ export class AlphaVantageClient {
     })
   }
 
+  async trailingAnnualDividend(symbol) {
+    const payload = await this.request('TIME_SERIES_MONTHLY_ADJUSTED', {
+      symbol,
+      datatype: 'json',
+    })
+
+    const timeSeries = payload['Monthly Adjusted Time Series'] || {}
+    const dates = Object.keys(timeSeries)
+    const trailing12Months = dates.slice(0, 12)
+
+    const trailingAnnualDividend = trailing12Months.reduce((total, date) => {
+      const dividendPaidInMonth = parseFloat(timeSeries[date]['7. dividend amount']) || 0
+      return total + dividendPaidInMonth
+    }, 0)
+
+    return trailingAnnualDividend
+  }
+
   async quote(symbol) {
     const payload = await this.request('GLOBAL_QUOTE', { symbol, datatype: 'json' })
     return new GlobalQuoteResponse(payload['Global Quote'] || {})

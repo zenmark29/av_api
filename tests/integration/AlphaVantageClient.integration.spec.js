@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { AlphaVantageClient, OverviewResponse } from '../../src/av_api.js'
+import { AlphaVantageClient, OverviewResponse, GlobalQuoteResponse } from '../../src/av_api.js'
 
 const apiKey = process.env.AV_KEY
 const testFn = apiKey ? it : it.skip
@@ -14,6 +14,7 @@ describe('AlphaVantageClient integration', () => {
     const client = new AlphaVantageClient(apiKey)
     const quote = await client.quote('IBM')
 
+    assert.ok(quote instanceof GlobalQuoteResponse)
     assert.strictEqual(quote.symbol, 'IBM')
     assert.ok(quote.hasUsefulInformation)
   })
@@ -37,10 +38,28 @@ describe('AlphaVantageClient integration', () => {
     assert.ok(overview.exchange)
     assert.ok(overview.currency)
   })
+
+  testFn('calculates trailing annual dividend for IBM', async () => {
+    const client = new AlphaVantageClient(apiKey)
+    const result = await client.trailingAnnualDividend('IBM')
+
+    assert.strictEqual(typeof result, 'number')
+    assert.ok(result >= 0)
+  })
+
+  testFn('calculates trailing annual dividend for VTI', async () => {
+    const client = new AlphaVantageClient(apiKey)
+    const result = await client.trailingAnnualDividend('VTI')
+
+    assert.strictEqual(typeof result, 'number')
+    assert.ok(result >= 0)
+  })
+
    testFn('fetches a global quote for VTI', async () => {
     const client = new AlphaVantageClient(apiKey)
     const quote = await client.quote('VTI')
 
+    assert.ok(quote instanceof GlobalQuoteResponse)
     assert.strictEqual(quote.symbol, 'VTI')
     assert.ok(quote.hasUsefulInformation)
   })

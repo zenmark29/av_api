@@ -57,6 +57,79 @@ describe('AlphaVantageClient', () => {
     assert.strictEqual(result.symbol, 'IBM')
   })
 
+  it('calculates trailing annual dividend from 12 months of adjusted data', async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        'Monthly Adjusted Time Series': {
+          '2024-05-31': { '7. dividend amount': '0.25' },
+          '2024-04-30': { '7. dividend amount': '0.00' },
+          '2024-03-29': { '7. dividend amount': '0.25' },
+          '2024-02-29': { '7. dividend amount': '0.00' },
+          '2024-01-31': { '7. dividend amount': '0.25' },
+          '2023-12-29': { '7. dividend amount': '0.00' },
+          '2023-11-30': { '7. dividend amount': '0.25' },
+          '2023-10-31': { '7. dividend amount': '0.00' },
+          '2023-09-29': { '7. dividend amount': '0.25' },
+          '2023-08-31': { '7. dividend amount': '0.00' },
+          '2023-07-31': { '7. dividend amount': '0.25' },
+          '2023-06-30': { '7. dividend amount': '0.00' },
+          '2023-05-31': { '7. dividend amount': '0.25' },
+        },
+      }),
+    })
+
+    const client = new AlphaVantageClient(apiKey)
+    const result = await client.trailingAnnualDividend('IBM')
+
+    assert.strictEqual(result, 1.5)
+  })
+
+  it('trailingAnnualDividend handles missing dividend amounts as zero', async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        'Monthly Adjusted Time Series': {
+          '2024-05-31': { '7. dividend amount': '0.50' },
+          '2024-04-30': {},
+          '2024-03-29': { '7. dividend amount': '0.50' },
+          '2024-02-29': {},
+          '2024-01-31': { '7. dividend amount': '0.50' },
+          '2023-12-29': {},
+          '2023-11-30': { '7. dividend amount': '0.50' },
+          '2023-10-31': {},
+          '2023-09-29': { '7. dividend amount': '0.50' },
+          '2023-08-31': {},
+          '2023-07-31': { '7. dividend amount': '0.50' },
+          '2023-06-30': {},
+        },
+      }),
+    })
+
+    const client = new AlphaVantageClient(apiKey)
+    const result = await client.trailingAnnualDividend('IBM')
+
+    assert.strictEqual(result, 3.0)
+  })
+
+  it('trailingAnnualDividend returns 0 when no data available', async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({}),
+    })
+
+    const client = new AlphaVantageClient(apiKey)
+    const result = await client.trailingAnnualDividend('IBM')
+
+    assert.strictEqual(result, 0)
+  })
+
   it('GlobalQuoteResponse parses numeric fields correctly', () => {
     const payload = {
       '01. symbol': 'IBM',
